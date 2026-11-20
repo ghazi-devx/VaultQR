@@ -1,0 +1,1513 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VaultQR | Custom Password & QR Code Studio</title>
+  
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- QRCode.js CDN for client-side high-precision QR generation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            obsidian: '#07090e',
+            slateDark: '#0d111a',
+            cyberCyan: '#06b6d4',
+            cyberEmerald: '#10b981',
+            cyberPurple: '#8b5cf6',
+          },
+          animation: {
+            'float-slow': 'floatOrb 14s ease-in-out infinite',
+            'float-reverse': 'floatOrbReverse 18s ease-in-out infinite',
+            'scanline': 'scanline 3.2s cubic-bezier(0.4, 0, 0.2, 1) infinite',
+            'pulse-glow': 'pulseGlow 3s ease-in-out infinite',
+            'slide-up': 'slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+          },
+          keyframes: {
+            floatOrb: {
+              '0%, 100%': { transform: 'translate(0px, 0px) scale(1)' },
+              '33%': { transform: 'translate(35px, -45px) scale(1.08)' },
+              '66%': { transform: 'translate(-25px, 25px) scale(0.95)' },
+            },
+            floatOrbReverse: {
+              '0%, 100%': { transform: 'translate(0px, 0px) scale(1)' },
+              '50%': { transform: 'translate(-40px, -30px) scale(1.1)' },
+            },
+            scanline: {
+              '0%': { top: '4%', opacity: '0' },
+              '15%': { opacity: '1' },
+              '85%': { opacity: '1' },
+              '100%': { top: '94%', opacity: '0' },
+            },
+            pulseGlow: {
+              '0%, 100%': { opacity: '0.65', transform: 'scale(1)' },
+              '50%': { opacity: '1', transform: 'scale(1.04)' },
+            },
+            slideUp: {
+              '0%': { opacity: '0', transform: 'translateY(16px)' },
+              '100%': { opacity: '1', transform: 'translateY(0)' },
+            }
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    /* Base Obsidian Background & Cyber Grid */
+    body {
+      background-color: #07090e;
+      color: #f1f5f9;
+      overflow-x: hidden;
+      selection-background-color: rgba(6, 182, 212, 0.3);
+    }
+
+    .cyber-grid {
+      background-size: 44px 44px;
+      background-image: 
+        linear-gradient(to right, rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+      mask-image: radial-gradient(ellipse 80% 70% at 50% 20%, #000 40%, transparent 100%);
+      -webkit-mask-image: radial-gradient(ellipse 80% 70% at 50% 20%, #000 40%, transparent 100%);
+    }
+
+    /* Glassmorphism Surface */
+    .glass-card {
+      background: linear-gradient(145deg, rgba(17, 23, 36, 0.72) 0%, rgba(10, 14, 23, 0.85) 100%);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.65), inset 0 1px 0 0 rgba(255, 255, 255, 0.07);
+    }
+
+    .glass-card-subtle {
+      background: rgba(15, 21, 34, 0.55);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    /* Custom Range Slider */
+    input[type="range"].cyber-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 8px;
+      border-radius: 999px;
+      background: rgba(30, 41, 59, 0.9);
+      outline: none;
+      cursor: pointer;
+    }
+
+    input[type="range"].cyber-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #ffffff;
+      border: 3px solid #06b6d4;
+      box-shadow: 0 0 15px rgba(6, 182, 212, 0.8);
+      cursor: grab;
+      transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease;
+    }
+
+    input[type="range"].cyber-slider::-webkit-slider-thumb:hover {
+      transform: scale(1.18);
+      box-shadow: 0 0 22px rgba(6, 182, 212, 1);
+    }
+
+    input[type="range"].cyber-slider::-webkit-slider-thumb:active {
+      cursor: grabbing;
+      transform: scale(1.08);
+    }
+
+    input[type="range"].cyber-slider::-moz-range-thumb {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #ffffff;
+      border: 3px solid #06b6d4;
+      box-shadow: 0 0 15px rgba(6, 182, 212, 0.8);
+      cursor: grab;
+      transition: transform 0.18s ease;
+    }
+
+    /* Toggle Switch Styling */
+    .toggle-checkbox:checked + .toggle-track {
+      background: linear-gradient(135deg, #06b6d4 0%, #10b981 100%);
+      border-color: rgba(16, 185, 129, 0.5);
+      box-shadow: 0 0 16px rgba(6, 182, 212, 0.35);
+    }
+    .toggle-checkbox:checked + .toggle-track .toggle-dot {
+      transform: translateX(22px);
+      background-color: #ffffff;
+    }
+
+    /* Button Ripple Effect */
+    .btn-ripple {
+      position: relative;
+      overflow: hidden;
+    }
+    .ripple-circle {
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.35);
+      transform: scale(0);
+      animation: rippleAnim 0.6s linear;
+      pointer-events: none;
+    }
+    @keyframes rippleAnim {
+      to {
+        transform: scale(4);
+        opacity: 0;
+      }
+    }
+
+    /* 3D Tilt Perspective Container */
+    .tilt-wrapper {
+      perspective: 1000px;
+    }
+    .tilt-card {
+      transform-style: preserve-3d;
+      transition: transform 0.15s ease-out, box-shadow 0.3s ease;
+    }
+
+    /* Hide native color input borders neatly */
+    input[type="color"] {
+      -webkit-appearance: none;
+      border: none;
+      padding: 0;
+    }
+    input[type="color"]::-webkit-color-swatch-wrapper {
+      padding: 0;
+    }
+    input[type="color"]::-webkit-color-swatch {
+      border: none;
+      border-radius: 8px;
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #07090e;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1e293b;
+      border-radius: 999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #334155;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col relative antialiased selection:bg-cyan-500/30 selection:text-cyan-200">
+
+  <!-- Ambient Animated Mesh Gradient Orbs & Cyber Grid -->
+  <div class="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+    <div class="absolute inset-0 cyber-grid"></div>
+    <div class="absolute -top-32 -left-24 w-96 h-96 bg-cyan-500/15 rounded-full blur-[120px] animate-float-slow"></div>
+    <div class="absolute top-1/3 -right-24 w-[28rem] h-[28rem] bg-purple-600/15 rounded-full blur-[130px] animate-float-reverse"></div>
+    <div class="absolute -bottom-32 left-1/3 w-96 h-96 bg-emerald-500/10 rounded-full blur-[120px] animate-float-slow"></div>
+  </div>
+
+  <!-- Floating Toast Notification -->
+  <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- Top Navigation Header -->
+  <header class="sticky top-0 z-40 border-b border-white/[0.07] bg-[#07090e]/80 backdrop-blur-xl">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 h-20 flex items-center justify-between gap-4">
+      
+      <!-- Brand Logo -->
+      <div class="flex items-center gap-3.5 group cursor-pointer" onclick="switchTab('password')">
+        <div class="relative w-11 h-11 rounded-xl bg-gradient-to-br from-cyan-500 via-emerald-400 to-purple-600 p-[1.5px] shadow-lg shadow-cyan-500/20 group-hover:shadow-cyan-400/40 transition-all duration-300">
+          <div class="w-full h-full bg-[#0a0e17] rounded-[10.5px] flex items-center justify-center relative overflow-hidden">
+            <div class="absolute inset-0 bg-gradient-to-tr from-cyan-500/20 to-purple-500/20 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            <svg class="w-6 h-6 text-cyan-400 group-hover:scale-110 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+          </div>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="text-xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-100 to-slate-400 bg-clip-text text-transparent">
+              Vault<span class="text-cyan-400">QR</span>
+            </span>
+            <span class="hidden sm:inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/25">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+              Studio Pro
+            </span>
+          </div>
+          <p class="text-xs text-slate-400 hidden sm:block">Cryptographic Key & Vector QR Engine</p>
+        </div>
+      </div>
+
+      <!-- Animated Sliding Tab Switcher -->
+      <nav class="relative flex items-center p-1.5 rounded-2xl bg-slate-900/90 border border-white/[0.08] shadow-inner" role="tablist">
+        <!-- Sliding Pill Indicator -->
+        <div id="tab-indicator" class="absolute top-1.5 bottom-1.5 left-1.5 w-[calc(50%-6px)] rounded-xl bg-gradient-to-r from-cyan-500/20 via-emerald-500/15 to-purple-500/20 border border-cyan-400/30 shadow-[0_0_20px_rgba(6,182,212,0.2)] transition-transform duration-300 ease-out"></div>
+        
+        <button id="tab-btn-password" onclick="switchTab('password')" role="tab" aria-selected="true"
+          class="relative z-10 flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-white transition-colors duration-200 w-36 sm:w-44">
+          <svg class="w-4 h-4 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+          </svg>
+          <span>Password Gen</span>
+        </button>
+
+        <button id="tab-btn-qr" onclick="switchTab('qr')" role="tab" aria-selected="false"
+          class="relative z-10 flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-slate-400 hover:text-slate-200 transition-colors duration-200 w-36 sm:w-44">
+          <svg class="w-4 h-4 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+          </svg>
+          <span>QR Studio</span>
+        </button>
+      </nav>
+
+    </div>
+  </header>
+
+  <!-- Main Workspace Container -->
+  <main class="relative z-10 flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-10">
+
+    <!-- =================================================================== -->
+    <!-- MODULE 1: CUSTOM PASSWORD GENERATOR                                 -->
+    <!-- =================================================================== -->
+    <section id="module-password" class="space-y-6 animate-slide-up">
+      
+      <!-- Top Hero Display Box -->
+      <div class="glass-card rounded-3xl p-5 sm:p-8 relative overflow-hidden group">
+        <!-- Subtle top accent line -->
+        <div class="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-cyan-400 to-transparent opacity-60"></div>
+
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+          <div class="flex items-center gap-2.5">
+            <span class="px-2.5 py-1 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-semibold tracking-wide uppercase">
+              CSPRNG Output
+            </span>
+            <span id="preset-badge" class="text-xs text-slate-400 font-medium">Custom Configuration</span>
+          </div>
+
+          <!-- Character Legend -->
+          <div class="flex items-center gap-4 text-[11px] font-medium text-slate-400">
+            <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-slate-100"></span>Letters</span>
+            <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-cyan-400"></span>Numbers</span>
+            <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-purple-400"></span>Symbols</span>
+          </div>
+        </div>
+
+        <!-- Syntax Highlighted Password Output Field -->
+        <div class="relative flex flex-col lg:flex-row items-stretch lg:items-center gap-3 bg-[#06080d]/90 border border-white/10 rounded-2xl p-3 sm:p-4 shadow-inner focus-within:border-cyan-500/50 transition-colors">
+          <div id="password-display" 
+               class="flex-1 font-mono text-xl sm:text-2xl md:text-3xl font-bold tracking-wider break-all min-h-[44px] flex items-center px-2 py-1 select-all leading-relaxed"
+               aria-live="polite">
+            <!-- Populated dynamically with syntax-highlighted spans -->
+          </div>
+
+          <!-- Action Buttons: Send to QR, Regenerate, Copy -->
+          <div class="flex items-center justify-end gap-2.5 pt-2 lg:pt-0 border-t lg:border-t-0 border-white/[0.06] shrink-0">
+            <!-- Quick Send to QR Button -->
+            <button onclick="sendPasswordToQR()" title="Convert Password to QR Code"
+              class="btn-ripple p-3 rounded-xl bg-slate-800/80 hover:bg-purple-500/20 text-slate-300 hover:text-purple-300 border border-white/10 hover:border-purple-500/40 transition-all duration-200 flex items-center gap-2 text-xs font-semibold">
+              <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+              </svg>
+              <span class="hidden sm:inline">QR</span>
+            </button>
+
+            <!-- Regenerate Button with 360 Spin -->
+            <button id="btn-regenerate" onclick="triggerRegenerate()" title="Regenerate Password"
+              class="btn-ripple p-3 rounded-xl bg-slate-800/80 hover:bg-slate-700/90 text-slate-200 border border-white/10 hover:border-cyan-400/40 transition-all duration-200 group/regen">
+              <svg id="regen-icon" class="w-5 h-5 text-cyan-400 transition-transform duration-500 ease-out" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
+
+            <!-- 1-Click Copy Button with Morphing Checkmark -->
+            <button id="btn-copy-pw" onclick="copyCurrentPassword()"
+              class="btn-ripple flex items-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 text-slate-950 font-bold text-sm shadow-lg shadow-cyan-500/25 hover:shadow-cyan-400/40 transition-all duration-200 active:scale-95">
+              <svg id="icon-copy-default" class="w-5 h-5 transition-all duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+              <svg id="icon-copy-check" class="w-5 h-5 hidden scale-0 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.8">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+              <span id="text-copy-pw">Copy Key</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Real-Time Strength & Entropy Meter -->
+        <div class="mt-6 pt-5 border-t border-white/[0.06]">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+            <div class="flex items-center gap-2.5">
+              <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Security Strength:</span>
+              <span id="strength-label" class="text-sm font-bold text-emerald-400 transition-colors duration-300">Unbreakable</span>
+            </div>
+            <div class="flex items-center gap-4 text-xs font-mono text-slate-400">
+              <span>Entropy: <strong id="entropy-bits" class="text-slate-200">104 bits</strong></span>
+              <span class="hidden sm:inline text-slate-600">|</span>
+              <span>Est. Crack Time: <strong id="crack-time" class="text-cyan-400">Centuries</strong></span>
+            </div>
+          </div>
+
+          <!-- 4-Segment Animated Progress Bar -->
+          <div class="grid grid-cols-4 gap-2 h-2.5">
+            <div class="bg-slate-800/90 rounded-full overflow-hidden">
+              <div id="seg-1" class="h-full w-full bg-emerald-400 transition-all duration-500 ease-out rounded-full"></div>
+            </div>
+            <div class="bg-slate-800/90 rounded-full overflow-hidden">
+              <div id="seg-2" class="h-full w-full bg-emerald-400 transition-all duration-500 ease-out rounded-full"></div>
+            </div>
+            <div class="bg-slate-800/90 rounded-full overflow-hidden">
+              <div id="seg-3" class="h-full w-full bg-emerald-400 transition-all duration-500 ease-out rounded-full"></div>
+            </div>
+            <div class="bg-slate-800/90 rounded-full overflow-hidden">
+              <div id="seg-4" class="h-full w-full bg-emerald-400 transition-all duration-500 ease-out rounded-full"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Grid: Controls & History -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Customization Controls Card (7 cols) -->
+        <div class="lg:col-span-7 glass-card rounded-3xl p-6 sm:p-7 space-y-6">
+          <div class="flex items-center justify-between">
+            <h2 class="text-lg font-bold text-white flex items-center gap-2">
+              <span class="w-2 h-5 rounded-full bg-gradient-to-b from-cyan-400 to-emerald-400"></span>
+              Cipher Parameters
+            </h2>
+            <span class="text-xs text-slate-400">Client-side crypto.getRandomValues()</span>
+          </div>
+
+          <!-- Quick Preset Chips -->
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2.5">Quick Presets</label>
+            <div class="flex flex-wrap gap-2">
+              <button onclick="applyPreset('pin')" class="preset-chip px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-white/10 hover:border-cyan-400/40 transition-all">
+                🔢 6-Digit PIN
+              </button>
+              <button onclick="applyPreset('memorable')" class="preset-chip px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-white/10 hover:border-cyan-400/40 transition-all">
+                🧠 Memorable
+              </button>
+              <button onclick="applyPreset('ultra')" class="preset-chip px-3.5 py-2 rounded-xl text-xs font-semibold bg-cyan-500/15 text-cyan-300 border border-cyan-500/40 transition-all">
+                🛡️ Ultra Secure
+              </button>
+              <button onclick="applyPreset('dev')" class="preset-chip px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-white/10 hover:border-purple-400/40 transition-all">
+                ⚡ Developer Key (32)
+              </button>
+            </div>
+          </div>
+
+          <!-- Length Range Slider with Floating Value Badge -->
+          <div class="glass-card-subtle rounded-2xl p-4 sm:p-5">
+            <div class="flex items-center justify-between mb-4">
+              <label for="length-slider" class="text-sm font-semibold text-slate-200">Character Length</label>
+              <div class="px-3.5 py-1 rounded-xl bg-cyan-500/15 border border-cyan-400/30 font-mono text-base font-bold text-cyan-300 shadow-[0_0_15px_rgba(6,182,212,0.2)]">
+                <span id="length-value">18</span> <span class="text-xs font-normal text-cyan-400/80">chars</span>
+              </div>
+            </div>
+            <div class="relative pt-1 pb-2">
+              <input id="length-slider" type="range" min="6" max="64" value="18" class="cyber-slider" oninput="handleLengthChange(this.value)" />
+              <div class="flex justify-between text-[11px] font-mono text-slate-500 mt-2">
+                <span>6</span>
+                <span>16</span>
+                <span>32</span>
+                <span>48</span>
+                <span>64</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Toggle Switches Grid -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <!-- Uppercase -->
+            <label class="glass-card-subtle hover:border-white/15 rounded-2xl p-4 flex items-center justify-between cursor-pointer transition-all">
+              <div>
+                <div class="text-sm font-semibold text-slate-100">Uppercase</div>
+                <div class="text-xs font-mono text-slate-400">A – Z</div>
+              </div>
+              <div class="relative inline-flex items-center">
+                <input id="opt-upper" type="checkbox" checked class="sr-only toggle-checkbox" onchange="handleOptionChange()" />
+                <div class="toggle-track w-12 h-6.5 bg-slate-800 border border-white/10 rounded-full p-0.5 transition-all duration-300">
+                  <div class="toggle-dot w-5 h-5 bg-slate-400 rounded-full shadow-md transition-transform duration-300"></div>
+                </div>
+              </div>
+            </label>
+
+            <!-- Lowercase -->
+            <label class="glass-card-subtle hover:border-white/15 rounded-2xl p-4 flex items-center justify-between cursor-pointer transition-all">
+              <div>
+                <div class="text-sm font-semibold text-slate-100">Lowercase</div>
+                <div class="text-xs font-mono text-slate-400">a – z</div>
+              </div>
+              <div class="relative inline-flex items-center">
+                <input id="opt-lower" type="checkbox" checked class="sr-only toggle-checkbox" onchange="handleOptionChange()" />
+                <div class="toggle-track w-12 h-6.5 bg-slate-800 border border-white/10 rounded-full p-0.5 transition-all duration-300">
+                  <div class="toggle-dot w-5 h-5 bg-slate-400 rounded-full shadow-md transition-transform duration-300"></div>
+                </div>
+              </div>
+            </label>
+
+            <!-- Numbers -->
+            <label class="glass-card-subtle hover:border-white/15 rounded-2xl p-4 flex items-center justify-between cursor-pointer transition-all">
+              <div>
+                <div class="text-sm font-semibold text-cyan-300">Numbers</div>
+                <div class="text-xs font-mono text-slate-400">0 – 9</div>
+              </div>
+              <div class="relative inline-flex items-center">
+                <input id="opt-numbers" type="checkbox" checked class="sr-only toggle-checkbox" onchange="handleOptionChange()" />
+                <div class="toggle-track w-12 h-6.5 bg-slate-800 border border-white/10 rounded-full p-0.5 transition-all duration-300">
+                  <div class="toggle-dot w-5 h-5 bg-slate-400 rounded-full shadow-md transition-transform duration-300"></div>
+                </div>
+              </div>
+            </label>
+
+            <!-- Symbols -->
+            <label class="glass-card-subtle hover:border-white/15 rounded-2xl p-4 flex items-center justify-between cursor-pointer transition-all">
+              <div>
+                <div class="text-sm font-semibold text-purple-300">Symbols</div>
+                <div class="text-xs font-mono text-slate-400">!@#$%^&*</div>
+              </div>
+              <div class="relative inline-flex items-center">
+                <input id="opt-symbols" type="checkbox" checked class="sr-only toggle-checkbox" onchange="handleOptionChange()" />
+                <div class="toggle-track w-12 h-6.5 bg-slate-800 border border-white/10 rounded-full p-0.5 transition-all duration-300">
+                  <div class="toggle-dot w-5 h-5 bg-slate-400 rounded-full shadow-md transition-transform duration-300"></div>
+                </div>
+              </div>
+            </label>
+
+            <!-- Exclude Ambiguous Characters (Full Width) -->
+            <label class="sm:col-span-2 glass-card-subtle hover:border-white/15 rounded-2xl p-4 flex items-center justify-between cursor-pointer transition-all">
+              <div>
+                <div class="text-sm font-semibold text-emerald-300">Exclude Ambiguous Characters</div>
+                <div class="text-xs text-slate-400">Removes look-alike glyphs: <span class="font-mono text-slate-300">0, O, o, 1, l, I</span></div>
+              </div>
+              <div class="relative inline-flex items-center">
+                <input id="opt-ambiguous" type="checkbox" class="sr-only toggle-checkbox" onchange="handleOptionChange()" />
+                <div class="toggle-track w-12 h-6.5 bg-slate-800 border border-white/10 rounded-full p-0.5 transition-all duration-300">
+                  <div class="toggle-dot w-5 h-5 bg-slate-400 rounded-full shadow-md transition-transform duration-300"></div>
+                </div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Session Vault History Card (5 cols) -->
+        <div class="lg:col-span-5 glass-card rounded-3xl p-6 sm:p-7 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-5">
+              <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                <span class="w-2 h-5 rounded-full bg-gradient-to-b from-purple-400 to-cyan-400"></span>
+                Recent Vault History
+              </h2>
+              <button onclick="clearHistory()" class="text-xs font-medium text-slate-400 hover:text-rose-400 transition-colors px-2.5 py-1 rounded-lg hover:bg-rose-500/10">
+                Clear All
+              </button>
+            </div>
+
+            <p class="text-xs text-slate-400 mb-4">
+              Last 5 generated keys stored ephemerally in your current browser session memory.
+            </p>
+
+            <!-- History List Container -->
+            <div id="history-list" class="space-y-2.5">
+              <!-- Dynamically injected -->
+            </div>
+          </div>
+
+          <!-- Security Tip Banner -->
+          <div class="mt-6 p-4 rounded-2xl bg-gradient-to-r from-cyan-500/10 via-slate-900/50 to-purple-500/10 border border-white/[0.06] flex items-start gap-3">
+            <svg class="w-5 h-5 text-cyan-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            </svg>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              Zero server transmission. All cryptographic entropy is generated locally in RAM and cleared when you close this tab.
+            </p>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+
+    <!-- =================================================================== -->
+    <!-- MODULE 2: CUSTOM QR CODE STUDIO                                     -->
+    <!-- =================================================================== -->
+    <section id="module-qr" class="hidden space-y-6 animate-slide-up">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        
+        <!-- Left Column: QR Payload & Aesthetic Customization (7 cols) -->
+        <div class="lg:col-span-7 glass-card rounded-3xl p-6 sm:p-8 space-y-6">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <h2 class="text-lg font-bold text-white flex items-center gap-2">
+              <span class="w-2 h-5 rounded-full bg-gradient-to-b from-purple-400 to-cyan-400"></span>
+              QR Payload & Styling
+            </h2>
+
+            <!-- Payload Mode Selector -->
+            <div class="flex p-1 rounded-xl bg-slate-900/90 border border-white/10 text-xs font-semibold">
+              <button onclick="setQRMode('url')" id="qr-mode-url" class="px-3 py-1.5 rounded-lg bg-purple-500/25 text-purple-200 border border-purple-400/30 transition-all">
+                URL / Text
+              </button>
+              <button onclick="setQRMode('wifi')" id="qr-mode-wifi" class="px-3 py-1.5 rounded-lg text-slate-400 hover:text-white transition-all">
+                Wi-Fi
+              </button>
+              <button onclick="setQRMode('contact')" id="qr-mode-contact" class="px-3 py-1.5 rounded-lg text-slate-400 hover:text-white transition-all">
+                vCard / Email
+              </button>
+            </div>
+          </div>
+
+          <!-- Dynamic Input Forms Based on Mode -->
+          <div id="qr-inputs-container" class="space-y-4">
+            <!-- Mode 1: URL / Text -->
+            <div id="qr-form-url" class="space-y-2">
+              <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400">Destination URL or Raw Text</label>
+              <div class="relative">
+                <input id="qr-input-text" type="text" value="https://vaultqr.studio" placeholder="Enter URL, secret key, or message..."
+                  oninput="generateQRCode()"
+                  class="w-full bg-[#06080d]/90 border border-white/10 focus:border-purple-500/60 rounded-2xl px-4 py-3.5 text-sm text-white placeholder-slate-500 outline-none transition-all font-mono" />
+                <button onclick="document.getElementById('qr-input-text').value=''; generateQRCode();" class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-500 hover:text-slate-300 px-2 py-1">
+                  Clear
+                </button>
+              </div>
+            </div>
+
+            <!-- Mode 2: Wi-Fi Network -->
+            <div id="qr-form-wifi" class="hidden grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div>
+                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Network Name (SSID)</label>
+                <input id="wifi-ssid" type="text" placeholder="e.g., CyberNet_5G" oninput="generateQRCode()"
+                  class="w-full bg-[#06080d]/90 border border-white/10 focus:border-purple-500/60 rounded-xl px-3.5 py-2.5 text-sm text-white outline-none" />
+              </div>
+              <div>
+                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Wi-Fi Password</label>
+                <input id="wifi-pass" type="text" placeholder="Enter network password" oninput="generateQRCode()"
+                  class="w-full bg-[#06080d]/90 border border-white/10 focus:border-purple-500/60 rounded-xl px-3.5 py-2.5 text-sm text-white font-mono outline-none" />
+              </div>
+              <div class="sm:col-span-2">
+                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Encryption Type</label>
+                <select id="wifi-enc" onchange="generateQRCode()"
+                  class="w-full bg-[#06080d]/90 border border-white/10 focus:border-purple-500/60 rounded-xl px-3.5 py-2.5 text-sm text-white outline-none">
+                  <option value="WPA">WPA / WPA2 / WPA3 (Recommended)</option>
+                  <option value="WEP">WEP</option>
+                  <option value="nopass">None (Open Network)</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Mode 3: vCard / Contact -->
+            <div id="qr-form-contact" class="hidden grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div>
+                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Full Name</label>
+                <input id="vcard-name" type="text" placeholder="Alex Mercer" oninput="generateQRCode()"
+                  class="w-full bg-[#06080d]/90 border border-white/10 focus:border-purple-500/60 rounded-xl px-3.5 py-2.5 text-sm text-white outline-none" />
+              </div>
+              <div>
+                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Phone Number</label>
+                <input id="vcard-phone" type="tel" placeholder="+1 555 019 2834" oninput="generateQRCode()"
+                  class="w-full bg-[#06080d]/90 border border-white/10 focus:border-purple-500/60 rounded-xl px-3.5 py-2.5 text-sm text-white outline-none" />
+              </div>
+              <div class="sm:col-span-2">
+                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Email Address</label>
+                <input id="vcard-email" type="email" placeholder="alex@vaultqr.studio" oninput="generateQRCode()"
+                  class="w-full bg-[#06080d]/90 border border-white/10 focus:border-purple-500/60 rounded-xl px-3.5 py-2.5 text-sm text-white outline-none" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Color Customization & Curated Swatches -->
+          <div class="pt-4 border-t border-white/[0.06] space-y-4">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Color Palette & Swatches</span>
+              <div class="flex items-center gap-2">
+                <button onclick="applyQRTheme('#06b6d4', '#090d16')" title="Cyber Cyan Dark" class="w-6 h-6 rounded-full bg-gradient-to-tr from-slate-950 to-cyan-400 border border-white/30 hover:scale-110 transition-transform"></button>
+                <button onclick="applyQRTheme('#10b981', '#07120e')" title="Matrix Emerald" class="w-6 h-6 rounded-full bg-gradient-to-tr from-emerald-950 to-emerald-400 border border-white/30 hover:scale-110 transition-transform"></button>
+                <button onclick="applyQRTheme('#a855f7', '#0f091a')" title="Neon Purple" class="w-6 h-6 rounded-full bg-gradient-to-tr from-purple-950 to-purple-400 border border-white/30 hover:scale-110 transition-transform"></button>
+                <button onclick="applyQRTheme('#0f172a', '#ffffff')" title="Classic High-Contrast" class="w-6 h-6 rounded-full bg-gradient-to-tr from-slate-900 to-white border border-white/30 hover:scale-110 transition-transform"></button>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <!-- Foreground Picker -->
+              <div class="glass-card-subtle rounded-2xl p-3.5 flex items-center justify-between">
+                <div>
+                  <div class="text-xs font-semibold text-slate-200">Foreground Matrix</div>
+                  <div id="fg-hex-label" class="text-[11px] font-mono text-cyan-400 uppercase mt-0.5">#06B6D4</div>
+                </div>
+                <input id="qr-fg-color" type="color" value="#06b6d4" oninput="updateColorLabels(); generateQRCode();" class="w-10 h-10 rounded-lg cursor-pointer bg-transparent" />
+              </div>
+
+              <!-- Background Picker -->
+              <div class="glass-card-subtle rounded-2xl p-3.5 flex items-center justify-between">
+                <div>
+                  <div class="text-xs font-semibold text-slate-200">Canvas Backdrop</div>
+                  <div id="bg-hex-label" class="text-[11px] font-mono text-slate-400 uppercase mt-0.5">#090D16</div>
+                </div>
+                <input id="qr-bg-color" type="color" value="#090d16" oninput="updateColorLabels(); generateQRCode();" class="w-10 h-10 rounded-lg cursor-pointer bg-transparent" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Technical & Visual Controls Grid -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3.5 pt-2">
+            <!-- Error Correction -->
+            <div class="glass-card-subtle rounded-2xl p-3.5">
+              <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2">Error Correction</label>
+              <select id="qr-ecc" onchange="generateQRCode()" class="w-full bg-slate-900/90 border border-white/10 rounded-xl px-2.5 py-2 text-xs font-semibold text-white outline-none">
+                <option value="L">Level L (7%)</option>
+                <option value="M">Level M (15%)</option>
+                <option value="Q">Level Q (25%)</option>
+                <option value="H" selected>Level H (30% - Best)</option>
+              </select>
+            </div>
+
+            <!-- Export Resolution -->
+            <div class="glass-card-subtle rounded-2xl p-3.5">
+              <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2">Export Resolution</label>
+              <select id="qr-size" onchange="generateQRCode()" class="w-full bg-slate-900/90 border border-white/10 rounded-xl px-2.5 py-2 text-xs font-semibold text-white outline-none">
+                <option value="256">256 × 256 px</option>
+                <option value="512" selected>512 × 512 px (HD)</option>
+                <option value="1024">1024 × 1024 px (4K)</option>
+              </select>
+            </div>
+
+            <!-- Frame Style -->
+            <div class="glass-card-subtle rounded-2xl p-3.5">
+              <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2">Frame Style</label>
+              <select id="qr-frame" onchange="applyFrameStyle()" class="w-full bg-slate-900/90 border border-white/10 rounded-xl px-2.5 py-2 text-xs font-semibold text-white outline-none">
+                <option value="neon" selected>Cyber Neon Glow</option>
+                <option value="glass">Minimal Glass</option>
+                <option value="badge">Scan Me Badge</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Center Badge / Overlay Icon Selector -->
+          <div class="pt-2">
+            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2.5">Center Emblem Overlay (Requires High ECC)</label>
+            <div class="grid grid-cols-5 gap-2">
+              <button onclick="setCenterBadge('none')" id="badge-btn-none" class="badge-btn py-2.5 rounded-xl text-xs font-semibold bg-purple-500/20 text-purple-200 border border-purple-400/40 transition-all">
+                None
+              </button>
+              <button onclick="setCenterBadge('shield')" id="badge-btn-shield" class="badge-btn py-2.5 rounded-xl text-xs font-semibold bg-slate-800/70 text-slate-300 border border-white/10 hover:border-white/25 transition-all">
+                🛡️ Shield
+              </button>
+              <button onclick="setCenterBadge('wifi')" id="badge-btn-wifi" class="badge-btn py-2.5 rounded-xl text-xs font-semibold bg-slate-800/70 text-slate-300 border border-white/10 hover:border-white/25 transition-all">
+                📶 Wi-Fi
+              </button>
+              <button onclick="setCenterBadge('link')" id="badge-btn-link" class="badge-btn py-2.5 rounded-xl text-xs font-semibold bg-slate-800/70 text-slate-300 border border-white/10 hover:border-white/25 transition-all">
+                🔗 Link
+              </button>
+              <button onclick="setCenterBadge('star')" id="badge-btn-star" class="badge-btn py-2.5 rounded-xl text-xs font-semibold bg-slate-800/70 text-slate-300 border border-white/10 hover:border-white/25 transition-all">
+                ⭐ Star
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column: Live 3D Tilt Interactive QR Preview & Export (5 cols) -->
+        <div class="lg:col-span-5 glass-card rounded-3xl p-6 sm:p-8 flex flex-col items-center justify-between space-y-6">
+          <div class="w-full flex items-center justify-between">
+            <span class="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              Live Interactive Preview
+            </span>
+            <span class="text-[11px] font-mono text-slate-500">Hover to 3D Tilt</span>
+          </div>
+
+          <!-- 3D Tilt Container -->
+          <div class="tilt-wrapper w-full flex items-center justify-center py-4">
+            <div id="qr-tilt-card" class="tilt-card relative p-6 rounded-3xl bg-[#090d16] border-2 border-cyan-400/50 shadow-[0_0_45px_rgba(6,182,212,0.25)] transition-all duration-300">
+              
+              <!-- Corner Reticle Accents -->
+              <div class="absolute top-2.5 left-2.5 w-4 h-4 border-t-2 border-l-2 border-cyan-400 rounded-tl-md pointer-events-none"></div>
+              <div class="absolute top-2.5 right-2.5 w-4 h-4 border-t-2 border-r-2 border-cyan-400 rounded-tr-md pointer-events-none"></div>
+              <div class="absolute bottom-2.5 left-2.5 w-4 h-4 border-b-2 border-l-2 border-cyan-400 rounded-bl-md pointer-events-none"></div>
+              <div class="absolute bottom-2.5 right-2.5 w-4 h-4 border-b-2 border-r-2 border-cyan-400 rounded-br-md pointer-events-none"></div>
+
+              <!-- Animated Laser Scanline -->
+              <div class="absolute left-3 right-3 h-[2px] bg-gradient-to-r from-transparent via-cyan-400 to-transparent shadow-[0_0_12px_#06b6d4] z-20 pointer-events-none animate-scanline"></div>
+
+              <!-- QR Canvas Wrapper -->
+              <div class="relative rounded-2xl overflow-hidden flex items-center justify-center p-2" id="qr-canvas-bg" style="background-color: #090d16;">
+                <!-- Hidden QRCode.js mount target -->
+                <div id="qrcode-hidden" class="hidden"></div>
+                <!-- Final composited high-res canvas preview -->
+                <canvas id="qr-final-canvas" width="240" height="240" class="w-56 h-56 sm:w-64 sm:h-64 rounded-xl block"></canvas>
+              </div>
+
+              <!-- Optional "SCAN ME" Pill for Badge Frame -->
+              <div id="qr-scan-label" class="hidden mt-3 text-center">
+                <span class="inline-block px-4 py-1 rounded-full bg-cyan-500/20 border border-cyan-400/40 text-cyan-300 font-mono text-xs font-bold tracking-widest uppercase">
+                  SCAN ME
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Export Action Buttons -->
+          <div class="w-full space-y-3 pt-2">
+            <button onclick="downloadQRPng()"
+              class="btn-ripple w-full py-3.5 px-5 rounded-2xl bg-gradient-to-r from-purple-500 via-cyan-500 to-emerald-500 hover:brightness-110 text-slate-950 font-bold text-sm shadow-lg shadow-purple-500/25 flex items-center justify-center gap-2.5 transition-all active:scale-[0.98]">
+              <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.3">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              <span>Download High-Res PNG</span>
+            </button>
+
+            <button onclick="copyQRToClipboard()"
+              class="btn-ripple w-full py-3 px-5 rounded-2xl bg-slate-800/80 hover:bg-slate-700/90 text-slate-200 border border-white/10 hover:border-cyan-400/40 font-semibold text-sm flex items-center justify-center gap-2 transition-all active:scale-[0.98]">
+              <svg class="w-4 h-4 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+              </svg>
+              <span>Copy QR Image to Clipboard</span>
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Minimalist Footer -->
+  <footer class="relative z-10 border-t border-white/[0.06] py-5 text-center text-xs text-slate-500">
+    <div class="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+      <span>VaultQR Studio &bull; 100% Client-Side Cryptographic & QR Processing</span>
+      <span class="font-mono text-slate-600">WebCrypto API + HTML5 Canvas Engine</span>
+    </div>
+  </footer>
+
+  <!-- ===================================================================== -->
+  <!-- APPLICATION LOGIC & INTERACTIVE MICRO-ANIMATIONS                      -->
+  <!-- ===================================================================== -->
+  <script>
+    // =========================================================================
+    // STATE MANAGEMENT
+    // =========================================================================
+    const state = {
+      activeTab: 'password',
+      password: {
+        current: '',
+        length: 18,
+        upper: true,
+        lower: true,
+        numbers: true,
+        symbols: true,
+        excludeAmbiguous: false,
+        memorableMode: false,
+        history: []
+      },
+      qr: {
+        mode: 'url',
+        badge: 'none',
+        fgColor: '#06b6d4',
+        bgColor: '#090d16',
+        ecc: 'H',
+        size: 512,
+        frame: 'neon'
+      }
+    };
+
+    // Character Sets
+    const CHARS = {
+      upper: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+      lower: 'abcdefghijklmnopqrstuvwxyz',
+      numbers: '0123456789',
+      symbols: '!@#$%^&*()_+-=[]{}|;:,.<>?'
+    };
+    const AMBIGUOUS_REGEX = /[0Oo1lI]/g;
+
+    const WORD_BANK = [
+      'Cyber', 'Nebula', 'Quantum', 'Vortex', 'Shadow', 'Titan', 'Cipher', 'Zenith',
+      'Nova', 'Pulse', 'Matrix', 'Echo', 'Cobalt', 'Apex', 'Orbit', 'Prism', 'Falcon', 'Mirage'
+    ];
+
+    // =========================================================================
+    // INITIALIZATION & RIPPLE MICRO-ANIMATION
+    // =========================================================================
+    window.addEventListener('DOMContentLoaded', () => {
+      updateSliderTrackFill();
+      generatePassword(true);
+      generateQRCode();
+      init3DTiltEffect();
+      initButtonRipples();
+    });
+
+    function initButtonRipples() {
+      document.addEventListener('click', (e) => {
+        const btn = e.target.closest('.btn-ripple');
+        if (!btn) return;
+        const circle = document.createElement('span');
+        const diameter = Math.max(btn.clientWidth, btn.clientHeight);
+        const radius = diameter / 2;
+        const rect = btn.getBoundingClientRect();
+        circle.style.width = circle.style.height = `${diameter}px`;
+        circle.style.left = `${e.clientX - rect.left - radius}px`;
+        circle.style.top = `${e.clientY - rect.top - radius}px`;
+        circle.classList.add('ripple-circle');
+        const existing = btn.querySelector('.ripple-circle');
+        if (existing) existing.remove();
+        btn.appendChild(circle);
+      });
+    }
+
+    // =========================================================================
+    // TAB NAVIGATION WITH SLIDING INDICATOR
+    // =========================================================================
+    function switchTab(tab) {
+      state.activeTab = tab;
+      const indicator = document.getElementById('tab-indicator');
+      const btnPw = document.getElementById('tab-btn-password');
+      const btnQr = document.getElementById('tab-btn-qr');
+      const modPw = document.getElementById('module-password');
+      const modQr = document.getElementById('module-qr');
+
+      if (tab === 'password') {
+        indicator.style.transform = 'translateX(0%)';
+        btnPw.classList.replace('text-slate-400', 'text-white');
+        btnQr.classList.replace('text-white', 'text-slate-400');
+        btnPw.setAttribute('aria-selected', 'true');
+        btnQr.setAttribute('aria-selected', 'false');
+        modQr.classList.add('hidden');
+        modPw.classList.remove('hidden');
+      } else {
+        indicator.style.transform = 'translateX(100%)';
+        btnQr.classList.replace('text-slate-400', 'text-white');
+        btnPw.classList.replace('text-white', 'text-slate-400');
+        btnQr.setAttribute('aria-selected', 'true');
+        btnPw.setAttribute('aria-selected', 'false');
+        modPw.classList.add('hidden');
+        modQr.classList.remove('hidden');
+        generateQRCode();
+      }
+    }
+
+    // =========================================================================
+    // TOAST NOTIFICATION SYSTEM (NO ALERT() USED)
+    // =========================================================================
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      
+      const accentClasses = type === 'success' 
+        ? 'border-emerald-500/40 bg-[#0a1414]/95 text-emerald-300 shadow-emerald-500/20'
+        : 'border-cyan-500/40 bg-[#0a1019]/95 text-cyan-300 shadow-cyan-500/20';
+
+      toast.className = `pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-2xl border backdrop-blur-xl shadow-xl text-xs font-semibold transform translate-y-4 opacity-0 transition-all duration-300 ${accentClasses}`;
+      toast.innerHTML = `
+        <span class="w-2 h-2 rounded-full ${type === 'success' ? 'bg-emerald-400' : 'bg-cyan-400'} animate-pulse"></span>
+        <span>${message}</span>
+      `;
+      container.appendChild(toast);
+
+      requestAnimationFrame(() => {
+        toast.classList.remove('translate-y-4', 'opacity-0');
+      });
+
+      setTimeout(() => {
+        toast.classList.add('translate-y-2', 'opacity-0');
+        setTimeout(() => toast.remove(), 300);
+      }, 2400);
+    }
+
+    // =========================================================================
+    // CLIPBOARD HELPER (IFRAME-SAFE EXEC-COMMAND + FALLBACK)
+    // =========================================================================
+    function copyTextToClipboard(text, toastMsg = 'Copied to clipboard!') {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      try {
+        document.execCommand('copy');
+        showToast(toastMsg, 'success');
+      } catch (err) {
+        if (navigator.clipboard) {
+          navigator.clipboard.writeText(text).then(() => showToast(toastMsg, 'success'));
+        }
+      }
+      document.body.removeChild(textarea);
+    }
+
+    // =========================================================================
+    // MODULE 1: PASSWORD GENERATOR LOGIC
+    // =========================================================================
+    function getSecureRandomInt(max) {
+      const array = new Uint32Array(1);
+      window.crypto.getRandomValues(array);
+      return array[0] % max;
+    }
+
+    function updateSliderTrackFill() {
+      const slider = document.getElementById('length-slider');
+      const min = parseInt(slider.min);
+      const max = parseInt(slider.max);
+      const val = parseInt(slider.value);
+      const pct = ((val - min) / (max - min)) * 100;
+      slider.style.background = `linear-gradient(to right, #06b6d4 0%, #10b981 ${pct}%, rgba(30, 41, 59, 0.9) ${pct}%)`;
+    }
+
+    function handleLengthChange(val) {
+      state.password.length = parseInt(val, 10);
+      state.password.memorableMode = false;
+      document.getElementById('length-value').textContent = val;
+      document.getElementById('preset-badge').textContent = 'Custom Configuration';
+      updateSliderTrackFill();
+      generatePassword(true);
+    }
+
+    function handleOptionChange() {
+      state.password.upper = document.getElementById('opt-upper').checked;
+      state.password.lower = document.getElementById('opt-lower').checked;
+      state.password.numbers = document.getElementById('opt-numbers').checked;
+      state.password.symbols = document.getElementById('opt-symbols').checked;
+      state.password.excludeAmbiguous = document.getElementById('opt-ambiguous').checked;
+      state.password.memorableMode = false;
+
+      // Enforce at least one active character set
+      if (!state.password.upper && !state.password.lower && !state.password.numbers && !state.password.symbols) {
+        state.password.lower = true;
+        document.getElementById('opt-lower').checked = true;
+        showToast('At least one character type must remain active', 'info');
+      }
+
+      document.getElementById('preset-badge').textContent = 'Custom Configuration';
+      generatePassword(true);
+    }
+
+    function applyPreset(type) {
+      state.password.memorableMode = false;
+      const badge = document.getElementById('preset-badge');
+
+      if (type === 'pin') {
+        state.password.length = 6;
+        state.password.upper = false;
+        state.password.lower = false;
+        state.password.numbers = true;
+        state.password.symbols = false;
+        badge.textContent = 'Preset: 6-Digit PIN';
+      } else if (type === 'memorable') {
+        state.password.memorableMode = true;
+        state.password.length = 16;
+        state.password.upper = true;
+        state.password.lower = true;
+        state.password.numbers = true;
+        state.password.symbols = true;
+        badge.textContent = 'Preset: Memorable Passphrase';
+      } else if (type === 'ultra') {
+        state.password.length = 20;
+        state.password.upper = true;
+        state.password.lower = true;
+        state.password.numbers = true;
+        state.password.symbols = true;
+        badge.textContent = 'Preset: Ultra Secure';
+      } else if (type === 'dev') {
+        state.password.length = 32;
+        state.password.upper = true;
+        state.password.lower = true;
+        state.password.numbers = true;
+        state.password.symbols = false;
+        state.password.excludeAmbiguous = true;
+        badge.textContent = 'Preset: Developer API Key';
+      }
+
+      // Sync UI Controls
+      document.getElementById('length-slider').value = state.password.length;
+      document.getElementById('length-value').textContent = state.password.length;
+      document.getElementById('opt-upper').checked = state.password.upper;
+      document.getElementById('opt-lower').checked = state.password.lower;
+      document.getElementById('opt-numbers').checked = state.password.numbers;
+      document.getElementById('opt-symbols').checked = state.password.symbols;
+      document.getElementById('opt-ambiguous').checked = state.password.excludeAmbiguous;
+      updateSliderTrackFill();
+      generatePassword(true);
+    }
+
+    function triggerRegenerate() {
+      const icon = document.getElementById('regen-icon');
+      const currentRot = parseInt(icon.dataset.rot || '0', 10) + 360;
+      icon.dataset.rot = currentRot;
+      icon.style.transform = `rotate(${currentRot}deg)`;
+      generatePassword(true);
+    }
+
+    function generatePassword(saveToHistory = false) {
+      let result = '';
+      let poolSize = 0;
+
+      if (state.password.memorableMode) {
+        const w1 = WORD_BANK[getSecureRandomInt(WORD_BANK.length)];
+        const w2 = WORD_BANK[getSecureRandomInt(WORD_BANK.length)];
+        const num = 10 + getSecureRandomInt(89);
+        const symList = '!@#$%&*';
+        const sym = symList[getSecureRandomInt(symList.length)];
+        result = `${w1}${sym}${w2}${num}`;
+        poolSize = 72;
+      } else {
+        let sets = [];
+        let fullPool = '';
+
+        const filterSet = (str) => state.password.excludeAmbiguous ? str.replace(AMBIGUOUS_REGEX, '') : str;
+
+        if (state.password.upper) {
+          const s = filterSet(CHARS.upper);
+          sets.push(s);
+          fullPool += s;
+        }
+        if (state.password.lower) {
+          const s = filterSet(CHARS.lower);
+          sets.push(s);
+          fullPool += s;
+        }
+        if (state.password.numbers) {
+          const s = filterSet(CHARS.numbers);
+          sets.push(s);
+          fullPool += s;
+        }
+        if (state.password.symbols) {
+          const s = filterSet(CHARS.symbols);
+          sets.push(s);
+          fullPool += s;
+        }
+
+        poolSize = fullPool.length;
+        const charsArray = [];
+
+        // Guarantee at least one character from each enabled set
+        sets.forEach(s => {
+          if (charsArray.length < state.password.length && s.length > 0) {
+            charsArray.push(s[getSecureRandomInt(s.length)]);
+          }
+        });
+
+        // Fill remaining length from unified pool
+        while (charsArray.length < state.password.length) {
+          charsArray.push(fullPool[getSecureRandomInt(fullPool.length)]);
+        }
+
+        // Fisher-Yates Cryptographic Shuffle
+        for (let i = charsArray.length - 1; i > 0; i--) {
+          const j = getSecureRandomInt(i + 1);
+          [charsArray[i], charsArray[j]] = [charsArray[j], charsArray[i]];
+        }
+
+        result = charsArray.join('');
+      }
+
+      state.password.current = result;
+      renderSyntaxHighlightedPassword(result);
+      updateStrengthMeter(result, poolSize);
+
+      if (saveToHistory && result) {
+        addToHistory(result);
+      }
+    }
+
+    function renderSyntaxHighlightedPassword(pwd) {
+      const container = document.getElementById('password-display');
+      container.innerHTML = '';
+
+      for (const ch of pwd) {
+        const span = document.createElement('span');
+        span.textContent = ch;
+        if (/[0-9]/.test(ch)) {
+          span.className = 'text-cyan-400';
+        } else if (/[^A-Za-z0-9]/.test(ch)) {
+          span.className = 'text-purple-400';
+        } else {
+          span.className = 'text-slate-100';
+        }
+        container.appendChild(span);
+      }
+    }
+
+    function updateStrengthMeter(pwd, poolSize) {
+      const entropy = Math.round(pwd.length * Math.log2(Math.max(poolSize, 2)));
+      document.getElementById('entropy-bits').textContent = `${entropy} bits`;
+
+      const labelEl = document.getElementById('strength-label');
+      const crackEl = document.getElementById('crack-time');
+      const segs = [
+        document.getElementById('seg-1'),
+        document.getElementById('seg-2'),
+        document.getElementById('seg-3'),
+        document.getElementById('seg-4')
+      ];
+
+      let level = 1;
+      let colorClass = 'bg-rose-500';
+      let textClass = 'text-rose-400';
+      let labelText = 'Vulnerable';
+      let crackText = 'Instant – Seconds';
+
+      if (entropy >= 95) {
+        level = 4;
+        colorClass = 'bg-emerald-400';
+        textClass = 'text-emerald-400';
+        labelText = 'Unbreakable';
+        crackText = 'Trillions of Years';
+      } else if (entropy >= 68) {
+        level = 3;
+        colorClass = 'bg-cyan-400';
+        textClass = 'text-cyan-400';
+        labelText = 'Strong Vault';
+        crackText = 'Centuries';
+      } else if (entropy >= 45) {
+        level = 2;
+        colorClass = 'bg-amber-400';
+        textClass = 'text-amber-400';
+        labelText = 'Moderate';
+        crackText = 'Months – Years';
+      }
+
+      labelEl.textContent = labelText;
+      labelEl.className = `text-sm font-bold transition-colors duration-300 ${textClass}`;
+      crackEl.textContent = crackText;
+
+      segs.forEach((seg, idx) => {
+        seg.className = 'h-full transition-all duration-500 ease-out rounded-full';
+        if (idx < level) {
+          seg.classList.add('w-full', colorClass);
+        } else {
+          seg.classList.add('w-0');
+        }
+      });
+    }
+
+    function copyCurrentPassword() {
+      if (!state.password.current) return;
+      copyTextToClipboard(state.password.current, 'Password copied to clipboard!');
+
+      const defIcon = document.getElementById('icon-copy-default');
+      const chkIcon = document.getElementById('icon-copy-check');
+      const btnText = document.getElementById('text-copy-pw');
+
+      defIcon.classList.add('hidden');
+      chkIcon.classList.remove('hidden');
+      requestAnimationFrame(() => chkIcon.classList.remove('scale-0'));
+      btnText.textContent = 'Copied!';
+
+      setTimeout(() => {
+        chkIcon.classList.add('scale-0');
+        setTimeout(() => {
+          chkIcon.classList.add('hidden');
+          defIcon.classList.remove('hidden');
+          btnText.textContent = 'Copy Key';
+        }, 150);
+      }, 1600);
+    }
+
+    function sendPasswordToQR() {
+      if (!state.password.current) return;
+      setQRMode('url');
+      document.getElementById('qr-input-text').value = state.password.current;
+      switchTab('qr');
+      showToast('Password loaded into QR Studio', 'info');
+    }
+
+    // Session Memory History (Max 5)
+    function addToHistory(pwd) {
+      if (state.password.history[0] === pwd) return;
+      state.password.history.unshift(pwd);
+      if (state.password.history.length > 5) {
+        state.password.history.pop();
+      }
+      renderHistory();
+    }
+
+    function clearHistory() {
+      state.password.history = [];
+      renderHistory();
+      showToast('Session history cleared', 'info');
+    }
+
+    function renderHistory() {
+      const container = document.getElementById('history-list');
+      if (state.password.history.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-8 px-4 rounded-2xl border border-dashed border-white/10 text-xs text-slate-500">
+            No keys in session vault yet. Click Regenerate to create keys.
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = state.password.history.map((item, idx) => `
+        <div class="group flex items-center justify-between gap-3 p-3 rounded-xl bg-slate-900/70 hover:bg-slate-800/90 border border-white/[0.06] hover:border-cyan-500/30 transition-all">
+          <div class="flex items-center gap-2.5 min-w-0">
+            <span class="text-[10px] font-mono text-slate-500 w-4">#${idx + 1}</span>
+            <span class="font-mono text-xs sm:text-sm text-slate-200 truncate">${escapeHtml(item)}</span>
+          </div>
+          <button onclick="copyTextToClipboard('${item.replace(/'/g, "\\'")}', 'History key copied!')"
+            class="shrink-0 p-2 rounded-lg bg-white/5 hover:bg-cyan-500/20 text-slate-400 hover:text-cyan-300 transition-colors" title="Copy Key">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            </svg>
+          </button>
+        </div>
+      `).join('');
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/[&<>"']/g, (m) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[m]));
+    }
+
+    // =========================================================================
+    // MODULE 2: CUSTOM QR CODE STUDIO LOGIC
+    // =========================================================================
+    function setQRMode(mode) {
+      state.qr.mode = mode;
+      ['url', 'wifi', 'contact'].forEach(m => {
+        const btn = document.getElementById(`qr-mode-${m}`);
+        const form = document.getElementById(`qr-form-${m}`);
+        if (m === mode) {
+          btn.className = 'px-3 py-1.5 rounded-lg bg-purple-500/25 text-purple-200 border border-purple-400/30 transition-all';
+          form.classList.remove('hidden');
+          if (m !== 'url') form.classList.add('grid');
+        } else {
+          btn.className = 'px-3 py-1.5 rounded-lg text-slate-400 hover:text-white transition-all';
+          form.classList.add('hidden');
+          form.classList.remove('grid');
+        }
+      });
+      generateQRCode();
+    }
+
+    function getQRPayloadString() {
+      if (state.qr.mode === 'url') {
+        const val = document.getElementById('qr-input-text').value.trim();
+        return val || 'https://vaultqr.studio';
+      } else if (state.qr.mode === 'wifi') {
+        const ssid = document.getElementById('wifi-ssid').value.trim() || 'VaultQR_Guest';
+        const pass = document.getElementById('wifi-pass').value;
+        const enc = document.getElementById('wifi-enc').value;
+        return `WIFI:T:${enc};S:${ssid};P:${pass};;`;
+      } else if (state.qr.mode === 'contact') {
+        const name = document.getElementById('vcard-name').value.trim() || 'Alex Mercer';
+        const phone = document.getElementById('vcard-phone').value.trim() || '+15550192834';
+        const email = document.getElementById('vcard-email').value.trim() || 'alex@vaultqr.studio';
+        return `BEGIN:VCARD\nVERSION:3.0\nFN:${name}\nTEL:${phone}\nEMAIL:${email}\nEND:VCARD`;
+      }
+      return 'https://vaultqr.studio';
+    }
+
+    function applyQRTheme(fg, bg) {
+      document.getElementById('qr-fg-color').value = fg;
+      document.getElementById('qr-bg-color').value = bg;
+      updateColorLabels();
+      generateQRCode();
+    }
+
+    function updateColorLabels() {
+      const fg = document.getElementById('qr-fg-color').value;
+      const bg = document.getElementById('qr-bg-color').value;
+      state.qr.fgColor = fg;
+      state.qr.bgColor = bg;
+      document.getElementById('fg-hex-label').textContent = fg.toUpperCase();
+      document.getElementById('bg-hex-label').textContent = bg.toUpperCase();
+      document.getElementById('qr-canvas-bg').style.backgroundColor = bg;
+    }
+
+    function setCenterBadge(badge) {
+      state.qr.badge = badge;
+      document.querySelectorAll('.badge-btn').forEach(btn => {
+        btn.className = 'badge-btn py-2.5 rounded-xl text-xs font-semibold bg-slate-800/70 text-slate-300 border border-white/10 hover:border-white/25 transition-all';
+      });
+      const activeBtn = document.getElementById(`badge-btn-${badge}`);
+      if (activeBtn) {
+        activeBtn.className = 'badge-btn py-2.5 rounded-xl text-xs font-semibold bg-purple-500/20 text-purple-200 border border-purple-400/40 transition-all';
+      }
+      generateQRCode();
+    }
+
+    function applyFrameStyle() {
+      const style = document.getElementById('qr-frame').value;
+      state.qr.frame = style;
+      const card = document.getElementById('qr-tilt-card');
+      const scanLabel = document.getElementById('qr-scan-label');
+
+      card.classList.remove('border-cyan-400/50', 'shadow-[0_0_45px_rgba(6,182,212,0.25)]', 'border-white/15', 'border-purple-400/60', 'shadow-[0_0_45px_rgba(168,85,247,0.3)]');
+      scanLabel.classList.add('hidden');
+
+      if (style === 'neon') {
+        card.classList.add('border-cyan-400/50', 'shadow-[0_0_45px_rgba(6,182,212,0.25)]');
+      } else if (style === 'glass') {
+        card.classList.add('border-white/15');
+      } else if (style === 'badge') {
+        card.classList.add('border-purple-400/60', 'shadow-[0_0_45px_rgba(168,85,247,0.3)]');
+        scanLabel.classList.remove('hidden');
+      }
+    }
+
+    function generateQRCode() {
+      const payload = getQRPayloadString();
+      const fg = document.getElementById('qr-fg-color').value;
+      const bg = document.getElementById('qr-bg-color').value;
+      const eccLevel = document.getElementById('qr-ecc').value;
+      const exportSize = parseInt(document.getElementById('qr-size').value, 10);
+
+      state.qr.fgColor = fg;
+      state.qr.bgColor = bg;
+      state.qr.ecc = eccLevel;
+      state.qr.size = exportSize;
+
+      const hiddenMount = document.getElementById('qrcode-hidden');
+      hiddenMount.innerHTML = '';
+
+      const eccMap = {
+        'L': QRCode.CorrectLevel.L,
+        'M': QRCode.CorrectLevel.M,
+        'Q': QRCode.CorrectLevel.Q,
+        'H': QRCode.CorrectLevel.H
+      };
+
+      // Generate base QR matrix using QRCode.js
+      new QRCode(hiddenMount, {
+        text: payload,
+        width: exportSize,
+        height: exportSize,
+        colorDark: fg,
+        colorLight: bg,
+        correctLevel: eccMap[eccLevel] || QRCode.CorrectLevel.H
+      });
+
+      // Composite onto visible high-DPI canvas with optional center emblem
+      setTimeout(() => {
+        const sourceCanvas = hiddenMount.querySelector('canvas');
+        const targetCanvas = document.getElementById('qr-final-canvas');
+        if (!sourceCanvas || !targetCanvas) return;
+
+        targetCanvas.width = exportSize;
+        targetCanvas.height = exportSize;
+        const ctx = targetCanvas.getContext('2d');
+
+        // Fill background with quiet zone margin
+        const padding = Math.round(exportSize * 0.06);
+        ctx.fillStyle = bg;
+        ctx.fillRect(0, 0, exportSize, exportSize);
+
+        // Draw crisp QR matrix
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(sourceCanvas, padding, padding, exportSize - padding * 2, exportSize - padding * 2);
+
+        // Draw Center Emblem if selected
+        if (state.qr.badge !== 'none') {
+          drawCenterEmblem(ctx, exportSize, fg, bg, state.qr.badge);
+        }
+      }, 30);
+    }
+
+    function drawCenterEmblem(ctx, size, fg, bg, badgeType) {
+      const center = size / 2;
+      const badgeRadius = size * 0.115;
+
+      ctx.save();
+      // Outer backing circle matching background for clean module separation
+      ctx.beginPath();
+      ctx.arc(center, center, badgeRadius + size * 0.018, 0, Math.PI * 2);
+      ctx.fillStyle = bg;
+      ctx.fill();
+
+      // Glowing accent ring
+      ctx.beginPath();
+      ctx.arc(center, center, badgeRadius, 0, Math.PI * 2);
+      ctx.fillStyle = fg;
+      ctx.fill();
+
+      // Icon glyph in center
+      ctx.fillStyle = bg;
+      ctx.font = `bold ${Math.round(badgeRadius * 1.1)}px Inter, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      const glyphMap = {
+        shield: '🛡️',
+        wifi: '📶',
+        link: '🔗',
+        star: '★'
+      };
+      ctx.fillText(glyphMap[badgeType] || '★', center, center + (badgeType === 'star' ? 2 : 0));
+      ctx.restore();
+    }
+
+    function downloadQRPng() {
+      const canvas = document.getElementById('qr-final-canvas');
+      const link = document.createElement('a');
+      link.download = `VaultQR_${Date.now()}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      showToast(`Downloaded ${state.qr.size}×${state.qr.size} PNG!`, 'success');
+    }
+
+    function copyQRToClipboard() {
+      const canvas = document.getElementById('qr-final-canvas');
+      canvas.toBlob((blob) => {
+        if (!blob) return;
+        try {
+          const item = new ClipboardItem({ 'image/png': blob });
+          navigator.clipboard.write([item]).then(() => {
+            showToast('QR Code image copied to clipboard!', 'success');
+          }).catch(() => {
+            showToast('Use Download PNG if clipboard image is restricted', 'info');
+          });
+        } catch (e) {
+          showToast('Use Download PNG in this browser environment', 'info');
+        }
+      });
+    }
+
+    // =========================================================================
+    // 3D INTERACTIVE TILT HOVER EFFECT FOR QR CARD
+    // =========================================================================
+    function init3DTiltEffect() {
+      const card = document.getElementById('qr-tilt-card');
+      if (!card) return;
+
+      card.addEventListener('mousemove', (e) => {
+        const rect = card.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        const centerX = rect.width / 2;
+        const centerY = rect.height / 2;
+
+        const rotateX = ((y - centerY) / centerY) * -10;
+        const rotateY = ((x - centerX) / centerX) * 10;
+
+        card.style.transform = `rotateX(${rotateX.toFixed(2)}deg) rotateY(${rotateY.toFixed(2)}deg) scale(1.02)`;
+      });
+
+      card.addEventListener('mouseleave', () => {
+        card.style.transform = 'rotateX(0deg) rotateY(0deg) scale(1)';
+      });
+    }
+  </script>
+</body>
+</html>
